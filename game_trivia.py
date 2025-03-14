@@ -17,7 +17,8 @@ def quiz_up():
     print("\n🛑 Rules:")
     print("🔹 You have 4 choices (A, B, C, D).")
     print("🔹 Type the letter of the correct option.")
-    print("🔹 You have **9 seconds** to answer each question!\n")
+    print("🔹 You have **9 seconds** to answer each question!")
+    print("🔹 You can use up to 3 hints, but each hint will deduct 0.25 points.\n")
     time.sleep(3)
 
     # Ask the user to choose a difficulty level
@@ -51,6 +52,7 @@ def game(data):
     """Runs the quiz game logic."""
     global answer_recieved
     score = 0
+    hints_remaining = 3  # Allow 3 hints per game
 
     for count, item in enumerate(data['results'], start=1):
         item['question'] = html.unescape(item['question'])
@@ -73,6 +75,16 @@ def game(data):
         # Reset the answer_recieved flag to False for the next question
         answer_recieved = False
         stop_event = threading.Event()
+
+        # Ask if the user wants a hint
+        if hints_remaining > 0:
+            hint_option = input(f"Do you want a hint? ({hints_remaining} hints remaining) (y/n): ").strip().lower()
+            if hint_option == "y":
+                get_hint(item['correct_answer'], item['incorrect_answers'])
+                score -= 0.25  # Deduct points for using a hint
+                hints_remaining -= 1  # Reduce the number of hints remaining
+        else:
+            print("You have no hints remaining.")
 
         def countdown():
             """Runs a timer for 9 seconds and checks if the user has answered."""
@@ -129,6 +141,12 @@ def game(data):
         quiz_up()
     else:
         print("\nThanks for playing! Goodbye! 👋")
+
+
+def get_hint(correct_answer, incorrect_answers):
+    """Provides a hint by revealing part of the correct answer."""
+    hint = correct_answer[:len(correct_answer) // 2] + "_" * (len(correct_answer) - len(correct_answer) // 2)
+    print(f"Hint: {hint}")
 
 
 quiz_up()
