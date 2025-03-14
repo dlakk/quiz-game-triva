@@ -6,6 +6,8 @@ import random
 import html  # Import to decode HTML entities
 import time
 import threading  # Import threading to create a timer and enable parallel code execution for the timer function
+import sys
+import json
 
 
 def quiz_up():
@@ -18,7 +20,7 @@ def quiz_up():
     print("🔹 You have 4 choices (A, B, C, D).")
     print("🔹 Type the letter of the correct option.")
     print("🔹 You have **9 seconds** to answer each question!")
-    print("🔹 You can use up to 3 hints, but each hint will deduct 0.25 points.\n")
+    print("🔹 You can use up to 3 hints, but each hint will deduct 0.5 points.\n")
     time.sleep(3)
 
     # Ask the user to choose a difficulty level
@@ -81,20 +83,21 @@ def game(data):
             hint_option = input(f"Do you want a hint? ({hints_remaining} hints remaining) (y/n): ").strip().lower()
             if hint_option == "y":
                 get_hint(item['correct_answer'], item['incorrect_answers'])
-                score -= 0.25  # Deduct points for using a hint
+                score -= 0.5  # Deduct points for using a hint
                 hints_remaining -= 1  # Reduce the number of hints remaining
         else:
             print("You have no hints remaining.")
 
         def countdown():
             """Runs a timer for 9 seconds and checks if the user has answered."""
-            for _ in range(9):
+            for i in range(9, 0, -1):
                 if stop_event.is_set():
                     return
+                sys.stdout.write(f"\rTime left: [{'#' * (9 - i)}{' ' * i}] {i} seconds")
+                sys.stdout.flush()
                 time.sleep(1)
             if not stop_event.is_set():
                 print("\n⏰ Time's up! Moving to the next question...\n")
-                print("Press enter")
                 stop_event.set()
 
         # Start the countdown in a separate thread
@@ -136,6 +139,14 @@ def game(data):
         print("👏 Great job! You did well! 😃")
     else:
         print("🙂 Nice attempt! Keep practicing! 💪")
+
+    # Update the leaderboard
+    player_name = input("Enter your name for the leaderboard: ").strip()
+    update_leaderboard(player_name, score)
+
+    # Display the leaderboard
+    display_leaderboard()
+
     test = input("Do you want to play again? (y/n): ").strip().lower()
     if test == "y":
         quiz_up()
@@ -147,6 +158,41 @@ def get_hint(correct_answer, incorrect_answers):
     """Provides a hint by revealing part of the correct answer."""
     hint = correct_answer[:len(correct_answer) // 2] + "_" * (len(correct_answer) - len(correct_answer) // 2)
     print(f"Hint: {hint}")
+
+
+def update_leaderboard(player_name, score):
+    """Updates the leaderboard with the player's score."""
+    try:
+        with open("leaderboard.json", "r") as file:
+            high_scores = json.load(file)
+    except FileNotFoundError:
+        high_scores = {}
+
+    # Update the player's score if it's higher than their previous score
+    if player_name in high_scores:
+        if score > high_scores[player_name]:
+            high_scores[player_name] = score
+    else:
+        high_scores[player_name] = score
+
+    # Save the updated leaderboard
+    with open("leaderboard.json", "w") as file:
+        json.dump(high_scores, file)
+
+
+def display_leaderboard():
+    """Displays the top 10 scores from the leaderboard."""
+    try:
+        with open("leaderboard.json", "r") as file:
+            high_scores = json.load(file)
+    except FileNotFoundError:
+        print("\nNo scores recorded yet. Be the first to top the leaderboard! 🎉")
+        return
+
+    sorted_scores = sorted(high_scores.items(), key=lambda x: x[1], reverse=True)
+    print("\n🏆 Leaderboard:")
+    for rank, (name, score) in enumerate(sorted_scores[:10], start=1):
+        print(f"{rank}. {name}: {score}")
 
 
 quiz_up()
